@@ -7,13 +7,16 @@ from PyQt5.QtWidgets import (
         QGroupBox, QButtonGroup, QRadioButton,
         QPushButton, QLabel, QSpinBox)
 from memo_app import app
+from memo_qss import *
 
 btn_Menu = QPushButton('Меню')
 btn_Sleep = QPushButton('Відпочити')
 box_Minutes = QSpinBox()
 box_Minutes.setValue(30)
 btn_OK = QPushButton('Відповісти')
+btn_OK.setStyleSheet(QSS_OK)
 lb_Question = QLabel('')
+lb_Question.setStyleSheet(QSS_TextCardQuestion)
 
 RadioGroupBox = QGroupBox("Варіанти відповіді")
 RadioGroup = QButtonGroup()
@@ -30,7 +33,9 @@ RadioGroup.addButton(rbtn_4)
 
 AnsGroupBox = QGroupBox("Результати тесту")
 lb_Result = QLabel('')
+lb_Result.setStyleSheet(QSS_TextResult)
 lb_Correct = QLabel('')
+lb_Correct.setStyleSheet(QSS_TextCardQuestion)
 
 layout_ans1 = QHBoxLayout()
 layout_ans2 = QVBoxLayout()
