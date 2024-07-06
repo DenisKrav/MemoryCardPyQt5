@@ -1,69 +1,161 @@
-from memo_card_layout import (
-    app, layout_card,
-    lb_Question, lb_Correct, lb_Result,
-    rbtn_1, rbtn_2, rbtn_3, rbtn_4,
-    btn_OK, show_question, show_result
-)
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QWidget
-from random import shuffle
+
 from memo_app import app
-from memo_data import Form, FormView
-from memo_main_layout import (layout_main, btn_card, btn_form,
-                              wdgt_card, wdgt_edit)
-from memo_edit_layout import (txt_Question, txt_Answer,
-                              txt_Wrong1, txt_Wrong2, txt_Wrong3)
+from memo_data import *
+from memo_main_layout import *
+from memo_card_layout import *
+from memo_edit_layout import txt_Question, txt_Answer, txt_Wrong1, txt_Wrong2, txt_Wrong3
 
-card_width, card_height = 800, 450
-text_wrong = '''<font color="red">Невірно</font>'''
-text_correct = '''<font color="green">Вірно</font>'''
+######################################              Константы:              #############################################
+main_width, main_height = 1000, 450  # начальные размеры главного окна
+card_width, card_height = 600, 500  # начальные размеры окна "карточка"
+time_unit = 1000  # столько длится одна единица времени из тех, на которые нужно засыпать
+# (в рабочей версии программы увеличить в 60 раз!)
 
-frm = Form("Як буде яблоко по англійськи?", "apple", "application", "apricot", "banana")
+######################################          Глобальные переменные:      #############################################
+questions_listmodel = QuestionListModel()  # список вопросов
+frm_edit = QuestionEdit(0, txt_Question, txt_Answer, txt_Wrong1, txt_Wrong2,
+                        txt_Wrong3)  # запоминаем, что в форме редактирования вопроса с чем связано
+radio_list = [rbtn_1, rbtn_2, rbtn_3,
+              rbtn_4]  # список виджетов, который надо перемешивать (для случайного размещения ответов)
+frm_card = 0  # здесь будет связываться вопрос с формой теста
+timer = QTimer()  # таймер для возможности "уснуть" на время и проснуться
+win_card = QWidget()  # окно карточки
+win_main = QWidget()  # окно редактирования вопросов, основное в программе
 
-radi_list = [rbtn_1, rbtn_2, rbtn_3, rbtn_4]
-shuffle(radi_list)
-frm_card = FormView(frm, lb_Question, radi_list[0], radi_list[1], radi_list[2], radi_list[3])
-frm_edit = FormView(frm, txt_Question, txt_Answer, txt_Wrong1, txt_Wrong2, txt_Wrong3)
 
-def check_result():
-    correct = frm_card.answer.isChecked()
+######################################             Тестовые данные:         #############################################
+def testlist():
+    frm = Question('Яблоко', 'apple', 'application', 'pinapple', 'apply')
+    questions_listmodel.form_list.append(frm)
+    frm = Question('Дом', 'house', 'horse', 'hurry', 'hour')
+    questions_listmodel.form_list.append(frm)
+    frm = Question('Мышь', 'mouse', 'mouth', 'muse', 'museum')
+    questions_listmodel.form_list.append(frm)
+    frm = Question('Число', 'number', 'digit', 'amount', 'summary')
+    questions_listmodel.form_list.append(frm)
 
-    if correct:
-        lb_Result.setText(text_correct)
-        lb_Correct.setText(frm_card.answer.text())
-        show_result()
-    else:
-        incorrect = frm_card.wrong_answer1.isChecked() or frm_card.wrong_answer2.isChecked() or frm_card.wrong_answer3.isChecked()
-        if incorrect:
-            lb_Result.setText(text_wrong)
-            lb_Correct.setText(frm_card.answer.text())
-            show_result()
 
-def click_OK(self):
-    if btn_OK.text() != 'Наступне питання':
-        check_result()
+######################################     Функции для проведения теста:    #############################################
+
+def set_card():
+    ''' задаёт, как выглядит окно карточки'''
+    win_card.resize(card_width, card_height)
+    win_card.move(300, 300)
+    win_card.setWindowTitle('Memory Card')
+    win_card.setLayout(layout_card)
+
+
+def sleep_card():
+    ''' карточка прячется на время, указанное в таймере'''
+    win_card.hide()
+    timer.setInterval(time_unit * box_Minutes.value())
+    timer.start()
+
 
 def show_card():
-    wdgt_edit.hide()
-    wdgt_card.show()
+    ''' показывает окно (по таймеру), таймер останавливается'''
+    win_card.show()
+    timer.stop()
 
-def show_form():
-    wdgt_card.hide()
-    wdgt_edit.show()
 
-btn_card.clicked.connect(show_card)
-btn_form.clicked.connect(show_form)
-btn_OK.clicked.connect(click_OK)
+def show_random():
+    ''' показать случайный вопрос '''
+    global frm_card  # как бы свойство окна - текущая форма с данными карточки
+    # получаем случайные данные, и случайно же распределяем варианты ответов по радиокнопкам:
+    frm_card = random_AnswerCheck(questions_listmodel, lb_Question, radio_list, lb_Correct, lb_Result)
+    # мы будем запускать функцию, когда окно уже есть. Так что показываем:
+    frm_card.show()  # загрузить нужные данные в соответствующие виджеты
+    show_question()  # показать на форме панель вопросовq
 
-win_card = QWidget()
-win_card.resize(card_width, card_height)
-win_card.move(300, 300)
-win_card.setWindowTitle('Memory Card')
 
-win_card.setLayout(layout_main)
-frm_card.show()
-frm_edit.show()
-show_question()
-show_card()
+def click_OK():
+    ''' проверяет вопрос или загружает новый вопрос '''
+    if btn_OK.text() != 'Следующий вопрос':
+        frm_card.check()
+        show_result()
+    else:
+        # надпись на кнопке равна 'Следующий', вот и создаем следующий случайный вопрос:
+        show_random()
 
-win_card.show()
+
+def back_to_menu():
+    ''' возврат из теста в окно редактора '''
+    win_card.hide()
+    win_main.showNormal()
+
+
+######################################     Функции для редактирования вопросов:    ######################################
+def set_main():
+    ''' задаёт, как выглядит основное окно'''
+    win_main.resize(main_width, main_height)
+    win_main.move(100, 100)
+    win_main.setWindowTitle('Список вопросов')
+    win_main.setLayout(layout_main)
+
+
+def edit_question(index):
+    ''' загружает в форму редактирования вопрос и ответы, соответствующие переданной строке '''
+    #  index - это объект класса QModelIndex, см. нужные методы ниже
+    if index.isValid():
+        i = index.row()
+        frm = questions_listmodel.form_list[i]
+        frm_edit.change(frm)
+        frm_edit.show()
+
+
+def add_form():
+    ''' добавляет новый вопрос и предлагает его изменить '''
+    questions_listmodel.insertRows()  # Новый вопрос появился в данных и автоматически в списке на экране
+    last = questions_listmodel.rowCount(0) - 1  # Новый вопрос - последний в списке. Найдем его позицию.
+    # В rowCount передаём 0, чтобы соответствовать требованиям функции:
+    # этот параметр все равно не используется, но
+    # нужен по стандарту библиотеки (метод с параметром index вызывается при отрисовке списка)
+    index = questions_listmodel.index(
+        last)  # получаем объект класса QModelIndex, который соответствует последнему элементу в данных
+    list_questions.setCurrentIndex(index)  # делаем соответствующую строку списка на экране текущей
+    edit_question(index)  # этот вопрос надо подгрузить в форму редактирования
+    # клика мышкой у нас тут нет, вызовем нужную функцию из программы
+    txt_Question.setFocus(
+        Qt.TabFocusReason)  # переводим фокус на поле редактирования вопроса, чтобы сразу убирались "болванки"
+    # Qt.TabFocusReason переводит фокус так, как если бы была нажата клавиша "tab"
+    # это удобно тем, что выделяет "болванку", её легко сразу убрать
+
+
+def del_form():
+    ''' удаляет вопрос и переключает фокус '''
+    questions_listmodel.removeRows(list_questions.currentIndex().row())
+    edit_question(list_questions.currentIndex())
+
+
+def start_test():
+    ''' при начале теста форма связывается со случайным вопросом и показывается'''
+    show_random()
+    win_card.show()
+    win_main.showMinimized()
+
+
+######################################      Установка нужных соединений:    #############################################
+def connects():
+    list_questions.setModel(questions_listmodel)  # связать список на экране со списком вопросов
+    list_questions.clicked.connect(
+        edit_question)  # при нажатии на элемент списка будет открываться для редактирования нужный вопрос
+    btn_add.clicked.connect(add_form)  # соединили нажатие кнопки "новый вопрос" с функцией добавления
+    btn_delete.clicked.connect(del_form)  # соединили нажатие кнопки "удалить вопрос" с функцией удаления
+    btn_start.clicked.connect(start_test)  # нажатие кнопки "начать тест"
+    btn_OK.clicked.connect(click_OK)  # нажатие кнопки "OK" на форме теста
+    btn_Menu.clicked.connect(back_to_menu)  # нажатие кнопки "Меню" для возврата из формы теста в редактор вопросов
+    timer.timeout.connect(show_card)  # показываем форму теста по истечении таймера
+    btn_Sleep.clicked.connect(sleep_card)  # нажатие кнопки "спать" у карточки-теста
+
+
+######################################            Запуск программы:         #############################################
+# Основной алгоритм иногда оформляют в функцию, которая запускается, только если код выполняется из этого файла,
+# а не при подключении как модуль. Детям это совершенно не нужно.
+testlist()
+set_card()
+set_main()
+connects()
+win_main.show()
 app.exec_()

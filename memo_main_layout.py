@@ -5,30 +5,37 @@ from PyQt5.QtWidgets import (
     QLineEdit, QFormLayout,
     QHBoxLayout, QVBoxLayout,
     QGroupBox, QButtonGroup, QRadioButton,
-    QPushButton, QLabel, QSpinBox
+    QPushButton, QLabel, QSpinBox, QListView
 )
-from memo_qss import *  # подгружаем "таблицы стилей"
+from memo_qss import *
 from memo_app import app
-
 from memo_edit_layout import layout_form
 from memo_card_layout import layout_card
 
-class CompounWidget(QWidget):
-    def __init__(self, layout, parent=None):
-        super().__init__(parent)
-        self.setLayout(layout)
+list_questions = QListView()
+wdgt_edit = QWidget()
+wdgt_edit.setLayout(layout_form)
+btn_add = QPushButton("Нове питання")
+btn_delete = QPushButton("Видалити питання")
+btn_start = QPushButton("почати тренування")
 
-wdgt_card = CompounWidget(layout_card)
-wdgt_edit = CompounWidget(layout_form)
-btn_card = QPushButton("Задати питання")
-btn_form = QPushButton("Редагування питання")
+main_col1 = QVBoxLayout()
+main_col1.addWidget(list_questions)
+main_col1.addWidget(btn_add)
 
-main_line = QVBoxLayout()
-main_line.addWidget(btn_card)
-main_line.addWidget(btn_form)
+main_col2 = QVBoxLayout()
+main_col2.addWidget(wdgt_edit)
+main_col2.addWidget(btn_delete)
+
+main_line1 = QHBoxLayout()
+main_line1.addLayout(main_col1)
+main_line1.addLayout(main_col2)
+
+main_line2 = QHBoxLayout()
+main_line2.addStretch(1)
+main_line2.addWidget(btn_start, stretch=2)
+main_line2.addStretch(1)
 
 layout_main = QVBoxLayout()
-layout_main.addWidget(wdgt_card)
-layout_main.addWidget(wdgt_edit)
-layout_main.addLayout(main_line)  # Замість addWidget(main_line)
-
+layout_main.addLayout(main_line1)
+layout_main.addLayout(main_line2)
